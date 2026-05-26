@@ -1,9 +1,12 @@
-const moment = require('moment');
-const fs = require('fs');
+import moment from 'moment';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import config from './config.js';
 
 class BacktestEngine {
-  constructor(config) {
-    this.config = config;
+  constructor(cfg) {
+    this.config = cfg;
     this.trades = [];
     this.results = {
       totalTrades: 0,
@@ -285,7 +288,6 @@ class BacktestEngine {
       csv += `${trade.date},${trade.entryPrice.toFixed(2)},${trade.exitPrice.toFixed(2)},${trade.realizedP_L.toFixed(2)},${trade.exitReason},${trade.volatility.toFixed(2)}\n`;
     });
 
-    const path = require('path');
     const dir = path.dirname(filename);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
@@ -329,7 +331,6 @@ function generateSampleHistoricalData(days = 30) {
  * Run Backtest Example
  */
 async function main() {
-  const config = require('./config');
   const backtester = new BacktestEngine(config);
 
   // Generate sample data (in production, load real historical data)
@@ -343,8 +344,8 @@ async function main() {
 }
 
 // Run if executed directly
-if (require.main === module) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   main().catch(console.error);
 }
 
-module.exports = BacktestEngine;
+export default BacktestEngine;

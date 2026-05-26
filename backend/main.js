@@ -1,79 +1,24 @@
-const config = require('./config');
-const AutoTrader = require('./autoTrader');
-const express = require('express');
-const cors = require('cors');
-const moment = require('moment-timezone');
+import config from './config.js';
+import AutoTrader from './src/services/autoTraderService.js';
+import express from 'express';
+import cors from 'cors';
+import TraderController from './src/controllers/traderController.js';
+import createTraderRouter from './src/routes/apiRoutes.js';
 
-// Initialize traders
+// Initialize trader service
 const trader = new AutoTrader(config);
+
+// Initialize controller & router
+const traderController = new TraderController(trader, config);
+const traderRouter = createTraderRouter(traderController);
 
 // Express server
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-/**
- * Dashboard Endpoint
- */
-app.get('/api/status', (req, res) => {
-  const summary = trader.riskManager.getDailySummary();
-  const activePositions = trader.strategy.getActivePositions();
-
-  res.json({
-    status: trader.isRunning ? 'RUNNING' : 'STOPPED',
-    dailySummary: summary,
-    activePositions: activePositions,
-    timestamp: moment().tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss'),
-  });
-});
-
-/**
- * Get All Trades
- */
-app.get('/api/trades', (req, res) => {
-  try {
-    const trades = trader.db.prepare('SELECT * FROM trades ORDER BY entryTime DESC').all();
-    res.json(trades);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * Get Trade Details
- */
-app.get('/api/trades/:tradeId', (req, res) => {
-  try {
-    const trade = trader.db.prepare('SELECT * FROM trades WHERE tradeId = ?').get(req.params.tradeId);
-    const orders = trader.db.prepare('SELECT * FROM orders WHERE tradeId = ?').all(req.params.tradeId);
-    
-    res.json({
-      trade: trade,
-      orders: orders,
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * Stop Trader (Testing Only)
- */
-app.post('/api/stop', async (req, res) => {
-  await trader.stop();
-  res.json({ message: 'Trader stopped' });
-});
-
-/**
- * Get Configuration
- */
-app.get('/api/config', (req, res) => {
-  res.json({
-    strategy: config.strategy,
-    riskManagement: config.riskManagement,
-    paperTrading: config.paperTrading,
-  });
-});
+// Load MVC Routes
+app.use('/api', traderRouter);
 
 /**
  * Start Server

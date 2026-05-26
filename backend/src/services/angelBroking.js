@@ -1,5 +1,5 @@
-const axios = require('axios');
-const crypto = require('crypto');
+import axios from 'axios';
+import crypto from 'crypto';
 
 class AngelBroking {
   constructor(config) {
@@ -279,4 +279,4 @@ class AngelBroking {
   }
 }
 
-module.exports = AngelBroking;
+export default AngelBroking;

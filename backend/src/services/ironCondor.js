@@ -1,4 +1,4 @@
-const moment = require('moment');
+import moment from 'moment';
 
 class IronCondorStrategy {
   constructor(config, riskManager) {
@@ -296,4 +296,4 @@ class IronCondorStrategy {
   }
 }
 
-module.exports = IronCondorStrategy;
+export default IronCondorStrategy;

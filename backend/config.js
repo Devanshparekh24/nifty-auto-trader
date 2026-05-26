@@ -1,6 +1,7 @@
-require('dotenv').config();
+import dotenv from 'dotenv';
+dotenv.config();
 
-module.exports = {
+export default {
   // Angel Broking Credentials
   broker: {
     apiKey: process.env.ANGEL_API_KEY,

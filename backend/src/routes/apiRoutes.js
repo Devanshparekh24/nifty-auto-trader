@@ -1,4 +1,4 @@
-const express = require('express');
+import express from 'express';
 
 function createTraderRouter(traderController) {
   const router = express.Router();
@@ -12,4 +12,4 @@ function createTraderRouter(traderController) {
   return router;
 }
 
-module.exports = createTraderRouter;
+export default createTraderRouter;

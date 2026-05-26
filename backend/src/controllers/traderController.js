@@ -1,5 +1,5 @@
-const TradeModel = require('../models/tradeModel');
-const moment = require('moment-timezone');
+import TradeModel from '../models/tradeModel.js';
+import moment from 'moment-timezone';
 
 class TraderController {
   constructor(trader, config) {
@@ -29,9 +29,9 @@ class TraderController {
   /**
    * GET /api/trades
    */
-  getTrades = (req, res) => {
+  getTrades = async (req, res) => {
     try {
-      const trades = TradeModel.getAllTrades(this.trader.db);
+      const trades = await TradeModel.getAllTrades(this.trader.db);
       res.json(trades);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -41,11 +41,11 @@ class TraderController {
   /**
    * GET /api/trades/:tradeId
    */
-  getTradeDetails = (req, res) => {
+  getTradeDetails = async (req, res) => {
     try {
       const { tradeId } = req.params;
-      const trade = TradeModel.getTradeById(this.trader.db, tradeId);
-      const orders = TradeModel.getOrdersByTradeId(this.trader.db, tradeId);
+      const trade = await TradeModel.getTradeById(this.trader.db, tradeId);
+      const orders = await TradeModel.getOrdersByTradeId(this.trader.db, tradeId);
       
       res.json({
         trade: trade,
@@ -84,4 +84,4 @@ class TraderController {
   };
 }
 
-module.exports = TraderController;
+export default TraderController;

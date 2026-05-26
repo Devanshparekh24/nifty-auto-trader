@@ -1,4 +1,4 @@
-const moment = require('moment');
+import moment from 'moment';
 
 class RiskManager {
   constructor(config) {
@@ -245,4 +245,4 @@ class RiskManager {
   }
 }
 
-module.exports = RiskManager;
+export default RiskManager;
