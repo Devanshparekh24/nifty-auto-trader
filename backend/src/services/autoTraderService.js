@@ -34,8 +34,12 @@ class AutoTrader {
     // Login to broker
     const loginSuccess = await this.broker.login();
     if (!loginSuccess) {
-      console.error('❌ Failed to connect to Angel Broking');
-      return;
+      if (this.config.paperTrading.enabled) {
+        console.log('⚠️ Failed to connect to Angel Broking, but continuing in MOCK/PAPER TRADING mode.');
+      } else {
+        console.error('❌ Failed to connect to Angel Broking');
+        return;
+      }
     }
 
     this.isRunning = true;
@@ -316,12 +320,10 @@ class AutoTrader {
    */
   async getNiftySpot() {
     try {
-      // In production, use real API
-      // For now, return mock data
-      return 24500 + Math.random() * 100;
+      return await this.broker.getNiftySpotPrice();
     } catch (error) {
       console.error('Error fetching spot price:', error.message);
-      return null;
+      return 24500 + Math.random() * 100;
     }
   }
 
@@ -330,11 +332,10 @@ class AutoTrader {
    */
   async getVolatility() {
     try {
-      // In production, fetch real VIX
-      return 18 + Math.random() * 5;
+      return await this.broker.getVixPrice();
     } catch (error) {
       console.error('Error fetching volatility:', error.message);
-      return 15;
+      return 15 + Math.random() * 5;
     }
   }
 
@@ -343,43 +344,72 @@ class AutoTrader {
    */
   async getOptionsChain() {
     try {
-      // Mock options chain
-      const chain = [];
-      const niftySpot = await this.getNiftySpot();
-      
-      for (let strike = niftySpot - 500; strike <= niftySpot + 500; strike += 100) {
-        chain.push({
-          strike: strike,
-          optionType: 'CALL',
-          ltp: Math.max(0, niftySpot - strike + Math.random() * 50),
-          lastPrice: Math.max(0, niftySpot - strike + Math.random() * 50),
-          expiryDate: moment().add(4, 'days').format('DDMMMYY'),
-          greeks: {
-            delta: Math.min(1, Math.max(-1, (niftySpot - strike) / 500)),
-            theta: 0.02,
-            vega: 0.1,
-          },
-        });
-
-        chain.push({
-          strike: strike,
-          optionType: 'PUT',
-          ltp: Math.max(0, strike - niftySpot + Math.random() * 50),
-          lastPrice: Math.max(0, strike - niftySpot + Math.random() * 50),
-          expiryDate: moment().add(4, 'days').format('DDMMMYY'),
-          greeks: {
-            delta: -Math.min(1, Math.max(-1, (niftySpot - strike) / 500)),
-            theta: 0.02,
-            vega: 0.1,
-          },
-        });
+      // If paper trading, return simulated options chain
+      if (this.config.paperTrading.enabled) {
+        return await this.generateSimulatedOptionsChain();
       }
 
-      return chain;
+      // Live trading: fetch real option chain from Angel Broking!
+      const expiryDate = moment().add(4, 'days').format('DD-MMM-YYYY'); // standard format e.g. 28-May-2026
+      const realChain = await this.broker.getOptionsChain('NIFTY50', expiryDate);
+      if (realChain && realChain.length > 0) {
+        return realChain.map(opt => ({
+          strike: parseFloat(opt.strikePrice || opt.strike),
+          optionType: opt.optionType,
+          ltp: parseFloat(opt.ltp || opt.lastPrice || 0),
+          lastPrice: parseFloat(opt.lastPrice || opt.ltp || 0),
+          expiryDate: opt.expiryDate,
+          greeks: {
+            delta: parseFloat(opt.delta || (opt.optionType === 'CALL' ? 0.2 : -0.2)),
+            theta: parseFloat(opt.theta || 0.02),
+            vega: parseFloat(opt.vega || 0.1),
+          }
+        }));
+      }
+      
+      return await this.generateSimulatedOptionsChain();
     } catch (error) {
       console.error('Error fetching options chain:', error.message);
-      return [];
+      return await this.generateSimulatedOptionsChain();
     }
+  }
+
+  /**
+   * Generate Simulated Options Chain for fallback/paper trading
+   */
+  async generateSimulatedOptionsChain() {
+    const chain = [];
+    const niftySpot = await this.getNiftySpot();
+    
+    for (let strike = niftySpot - 500; strike <= niftySpot + 500; strike += 100) {
+      chain.push({
+        strike: strike,
+        optionType: 'CALL',
+        ltp: Math.max(0, niftySpot - strike + Math.random() * 50),
+        lastPrice: Math.max(0, niftySpot - strike + Math.random() * 50),
+        expiryDate: moment().add(4, 'days').format('DDMMMYY'),
+        greeks: {
+          delta: Math.min(1, Math.max(-1, (niftySpot - strike) / 500)),
+          theta: 0.02,
+          vega: 0.1,
+        },
+      });
+
+      chain.push({
+        strike: strike,
+        optionType: 'PUT',
+        ltp: Math.max(0, strike - niftySpot + Math.random() * 50),
+        lastPrice: Math.max(0, strike - niftySpot + Math.random() * 50),
+        expiryDate: moment().add(4, 'days').format('DDMMMYY'),
+        greeks: {
+          delta: -Math.min(1, Math.max(-1, (niftySpot - strike) / 500)),
+          theta: 0.02,
+          vega: 0.1,
+        },
+      });
+    }
+
+    return chain;
   }
 
   /**

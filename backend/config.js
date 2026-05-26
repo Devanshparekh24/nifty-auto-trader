@@ -95,7 +95,7 @@ export default {
 
   // Paper Trading Mode
   paperTrading: {
-    enabled: true, // Set to false for live trading
-    initialCapital: 100000,
+    enabled: false, // Set to false for live trading
+    initialCapital: parseInt(process.env.INITIAL_CAPITAL) || 100000,
   },
 };

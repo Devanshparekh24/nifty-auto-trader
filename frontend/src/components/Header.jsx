@@ -1,6 +1,6 @@
 import React from 'react';
 
-function Header({ traderStatus, error, onRefresh }) {
+function Header({ traderStatus, error, onRefresh, isPaper, onTogglePaper }) {
   return (
     <header className="flex flex-col md:flex-row justify-between items-center bg-slate-900/70 backdrop-blur-xl border border-slate-800/60 rounded-2xl p-5 md:p-6 shadow-2xl gap-4">
       <div className="flex items-center gap-4">
@@ -16,7 +16,23 @@ function Header({ traderStatus, error, onRefresh }) {
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-wrap justify-center">
+        {/* Paper Trading Toggle */}
+        <div className="flex items-center gap-3 bg-slate-950/60 border border-slate-800/80 px-4 py-2 rounded-xl">
+          <span className="text-xs text-slate-400 font-bold tracking-wider uppercase">
+            {isPaper ? '📝 Paper Trade' : '⚡ Live Trade'}
+          </span>
+          <label className="relative inline-flex items-center cursor-pointer select-none">
+            <input 
+              type="checkbox" 
+              checked={!isPaper} 
+              onChange={() => onTogglePaper(!isPaper)}
+              className="sr-only peer" 
+            />
+            <div className="w-10 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-500 peer-checked:after:bg-violet-400 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-violet-950 border border-slate-700"></div>
+          </label>
+        </div>
+
         {error && (
           <span className="bg-rose-950/40 border border-rose-800/40 text-rose-200 px-3 py-1.5 rounded-lg text-xs font-semibold animate-pulse">
             ⚠️ Connection Offline

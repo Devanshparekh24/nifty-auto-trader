@@ -4,12 +4,14 @@ import AlertBar from './components/AlertBar';
 import StatsGrid from './components/StatsGrid';
 import TradesTable from './components/TradesTable';
 import TradeDetailsModal from './components/TradeDetailsModal';
+import PortfolioGrid from './components/PortfolioGrid';
 
-const API_BASE = 'http://localhost:3000';
+const API_BASE = 'http://localhost:3001';
 
 function App() {
   const [statusData, setStatusData] = useState(null);
   const [trades, setTrades] = useState([]);
+  const [portfolioData, setPortfolioData] = useState(null);
   const [selectedTrade, setSelectedTrade] = useState(null);
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [modalActive, setModalActive] = useState(false);
@@ -30,6 +32,13 @@ function App() {
       if (!tradesRes.ok) throw new Error('Failed to fetch trade records');
       const tradesJson = await tradesRes.json();
       setTrades(tradesJson);
+
+      // Fetch portfolio data
+      const portfolioRes = await fetch(`${API_BASE}/api/portfolio`);
+      if (portfolioRes.ok) {
+        const portfolioJson = await portfolioRes.json();
+        setPortfolioData(portfolioJson);
+      }
 
       setError(null);
       setLastUpdate(new Date().toLocaleTimeString('en-IN'));
@@ -67,6 +76,21 @@ function App() {
     setSelectedOrders([]);
   };
 
+  const handleTogglePaper = async (newVal) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/toggle-paper`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: newVal })
+      });
+      if (res.ok) {
+        await fetchData();
+      }
+    } catch (err) {
+      console.error('Error toggling paper trading:', err);
+    }
+  };
+
   if (loading && !statusData) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4 text-slate-400 font-medium bg-[#05070f]">
@@ -84,6 +108,8 @@ function App() {
     maxDailyLossRemaining: '10000.00'
   };
 
+  const isPaper = statusData?.capital?.isPaper !== false;
+
   return (
     <div className="max-w-[1400px] w-full flex flex-col gap-6 mx-auto">
       
@@ -92,6 +118,8 @@ function App() {
         traderStatus={statusData?.status} 
         error={error} 
         onRefresh={fetchData} 
+        isPaper={isPaper}
+        onTogglePaper={handleTogglePaper}
       />
 
       {/* 2. Paper Trading Notice Component */}
@@ -103,7 +131,10 @@ function App() {
         summary={summary} 
       />
 
-      {/* 4. Ledger Ledger Component */}
+      {/* 4. Portfolio Grid Component */}
+      <PortfolioGrid portfolioData={portfolioData} />
+
+      {/* 5. Ledger Ledger Component */}
       <TradesTable 
         trades={trades} 
         onRowClick={handleRowClick} 
