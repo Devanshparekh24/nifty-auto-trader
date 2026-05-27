@@ -13,6 +13,7 @@ class AutoTrader {
     this.strategy = new IronCondorStrategy(config, this.riskManager);
     this.isRunning = false;
     this.db = prisma; // Use Prisma client
+    this.latestOptionChainSummary = null;
     this.setupLogging();
   }
 
@@ -55,69 +56,109 @@ class AutoTrader {
    * Main Monitoring Loop
    */
   async monitoringLoop() {
-    const MARKET_OPEN = '09:15';
-    const MARKET_CLOSE = '15:30';
-
     console.log('✅ Market monitoring started');
     console.log(`📅 Time: ${moment().tz('Asia/Kolkata').format('HH:mm:ss')}`);
 
+    // Run immediately on start so the display isn't empty!
+    await this.runCheck();
+
     // Run every 1 minute
     const interval = setInterval(async () => {
-      const currentTime = moment().tz('Asia/Kolkata').format('HH:mm');
-
-      // Check if market is open
-      if (currentTime < MARKET_OPEN || currentTime >= MARKET_CLOSE) {
-        if (currentTime === '15:30') {
-          await this.closeAllPositions('Market Close');
-        }
-        return;
-      }
-
-      try {
-        // Get NIFTY 50 spot price
-        const spotPrice = await this.getNiftySpot();
-        if (!spotPrice) return;
-
-        // Get volatility (VIX)
-        const volatility = await this.getVolatility();
-
-        // Get options chain
-        const optionsChain = await this.getOptionsChain();
-        if (optionsChain.length === 0) return;
-
-        // Analyze and generate signals
-        const signal = this.strategy.analyzeOptionsChain(
-          optionsChain,
-          spotPrice,
-          volatility
-        );
-
-        if (signal.entrySignal && !this.riskManager.isCircuitBreakerHit()) {
-          console.log('\n' + '='.repeat(60));
-          console.log('🎯 ENTRY SIGNAL GENERATED');
-          console.log('='.repeat(60));
-          
-          signal.reasons.forEach(reason => console.log(reason));
-
-          // Execute the trade
-          await this.executeTrade(signal);
-        }
-
-        // Monitor active positions
-        await this.monitorPositions();
-
-        // Log status every 5 minutes
-        if (moment().minute() % 5 === 0) {
-          this.logStatus();
-        }
-
-      } catch (error) {
-        console.error('❌ Error in monitoring loop:', error.message);
-      }
+      await this.runCheck();
     }, 60000); // Run every minute
 
     // Store interval for cleanup
     this.monitoringInterval = interval;
+  }
+
+  /**
+   * Performs the option chain check and strategy evaluation
+   */
+  async runCheck() {
+    const MARKET_OPEN = '09:15';
+    const MARKET_CLOSE = '15:30';
+    const currentTime = moment().tz('Asia/Kolkata').format('HH:mm');
+
+    // Check if market is open (or bypass check if paper trading is enabled)
+    if ((currentTime < MARKET_OPEN || currentTime >= MARKET_CLOSE) && !this.config.paperTrading.enabled) {
+      if (currentTime === '15:30') {
+        await this.closeAllPositions('Market Close');
+      }
+      return;
+    }
+
+    try {
+      // Get NIFTY 50 spot price
+      const spotPrice = await this.getNiftySpot();
+      if (!spotPrice) return;
+
+      // Get volatility (VIX)
+      const volatility = await this.getVolatility();
+
+      // Get options chain
+      const optionsChain = await this.getOptionsChain();
+      if (optionsChain.length === 0) return;
+
+      // Analyze and generate signals
+      const signal = this.strategy.analyzeOptionsChain(
+        optionsChain,
+        spotPrice,
+        volatility
+      );
+
+      // Fetch selected strikes for display purposes
+      const shortCall = this.strategy.findOTMStrike(spotPrice, 'CALL', optionsChain);
+      const shortPut = this.strategy.findOTMStrike(spotPrice, 'PUT', optionsChain);
+      const longCall = shortCall ? this.strategy.findStrike(shortCall.strike + this.config.strategy.position.callSpreadWidth, optionsChain, 'CALL') : null;
+      const longPut = shortPut ? this.strategy.findStrike(shortPut.strike - this.config.strategy.position.putSpreadWidth, optionsChain, 'PUT') : null;
+      const expiryDate = optionsChain[0]?.expiryDate || 'N/A';
+
+      this.latestOptionChainSummary = {
+        expiryDate,
+        spotPrice,
+        volatility,
+        analyzedAt: moment().tz('Asia/Kolkata').format('HH:mm:ss'),
+        strikesCount: optionsChain.length,
+        selectedStrikes: {
+          shortCall: shortCall?.strike || 'N/A',
+          longCall: longCall?.strike || 'N/A',
+          shortPut: shortPut?.strike || 'N/A',
+          longPut: longPut?.strike || 'N/A',
+          shortCallLtp: shortCall?.ltp || shortCall?.lastPrice || 0,
+          longCallLtp: longCall?.ltp || longCall?.lastPrice || 0,
+          shortPutLtp: shortPut?.ltp || shortPut?.lastPrice || 0,
+          longPutLtp: longPut?.ltp || longPut?.lastPrice || 0,
+        }
+      };
+
+      // Print to console logs
+      console.log(`\n🔍 [${this.latestOptionChainSummary.analyzedAt}] Option Chain Checked | Spot: ₹${spotPrice.toFixed(2)} | VIX: ${volatility.toFixed(2)} | Expiry: ${expiryDate}`);
+      console.log(`   Strikes Analyzed:`);
+      console.log(`   - Call Spread: Sell CE ${this.latestOptionChainSummary.selectedStrikes.shortCall} (₹${this.latestOptionChainSummary.selectedStrikes.shortCallLtp.toFixed(2)}) | Buy CE ${this.latestOptionChainSummary.selectedStrikes.longCall} (₹${this.latestOptionChainSummary.selectedStrikes.longCallLtp.toFixed(2)})`);
+      console.log(`   - Put Spread: Sell PE ${this.latestOptionChainSummary.selectedStrikes.shortPut} (₹${this.latestOptionChainSummary.selectedStrikes.shortPutLtp.toFixed(2)}) | Buy PE ${this.latestOptionChainSummary.selectedStrikes.longPut} (₹${this.latestOptionChainSummary.selectedStrikes.longPutLtp.toFixed(2)})`);
+
+      if (signal.entrySignal && !this.riskManager.isCircuitBreakerHit()) {
+        console.log('\n' + '='.repeat(60));
+        console.log('🎯 ENTRY SIGNAL GENERATED');
+        console.log('='.repeat(60));
+        
+        signal.reasons.forEach(reason => console.log(reason));
+
+        // Execute the trade
+        await this.executeTrade(signal);
+      }
+
+      // Monitor active positions
+      await this.monitorPositions();
+
+      // Log status every 5 minutes
+      if (moment().minute() % 5 === 0) {
+        this.logStatus();
+      }
+
+    } catch (error) {
+      console.error('❌ Error in monitoring loop:', error.message);
+    }
   }
 
   /**

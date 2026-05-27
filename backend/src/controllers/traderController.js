@@ -42,6 +42,7 @@ class TraderController {
         status: this.trader.isRunning ? 'RUNNING' : 'STOPPED',
         dailySummary: summary,
         activePositions: activePositions,
+        latestOptionChain: this.trader.latestOptionChainSummary || null,
         timestamp: moment().tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss'),
         capital: {
           initial: initialCapital,

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import AlertBar from './components/AlertBar';
 import StatsGrid from './components/StatsGrid';
+import OptionChainDisplay from './components/OptionChainDisplay';
 import TradesTable from './components/TradesTable';
 import TradeDetailsModal from './components/TradeDetailsModal';
 import PortfolioGrid from './components/PortfolioGrid';
@@ -130,6 +131,9 @@ function App() {
         statusData={statusData} 
         summary={summary} 
       />
+
+      {/* 3.5. Active Option Chain Feed Component */}
+      <OptionChainDisplay latestOptionChain={statusData?.latestOptionChain} />
 
       {/* 4. Portfolio Grid Component */}
       <PortfolioGrid portfolioData={portfolioData} />
