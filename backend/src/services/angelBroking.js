@@ -131,8 +131,12 @@ class AngelBroking {
    */
   async getOptionsChain(symbol = 'NIFTY50', expiryDate) {
     try {
+      const targetUrl = this.baseUrl.includes('smartapi.angelbroking.com')
+        ? 'https://apiconnect.angelone.in/rest/secure/angelbroking/marketData/v1/getOptionChain'
+        : `${this.baseUrl}/rest/secure/angelbroking/marketData/v1/getOptionChain`;
+
       const response = await axios.post(
-        `${this.baseUrl}/rest/client/getoptionchain`,
+        targetUrl,
         {
           symbol: symbol,
           expiryDate: expiryDate, // Format: DD-MMM-YYYY
@@ -144,9 +148,9 @@ class AngelBroking {
         }
       );
 
-      return response.data.optionChain || [];
+      return response.data?.data?.optionChain || response.data?.optionChain || [];
     } catch (error) {
-      console.error('❌ Get Options Chain Error:', error.message);
+      console.error('❌ Get Options Chain Error:', error.response?.data || error.message);
       return [];
     }
   }
