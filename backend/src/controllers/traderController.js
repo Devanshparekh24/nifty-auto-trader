@@ -38,6 +38,21 @@ class TraderController {
         }
       }
 
+      let liveBrokerBalance = null;
+      try {
+        const brokerBalance = await this.trader.broker.getBalance();
+        if (brokerBalance && (brokerBalance.net || brokerBalance.availablecash)) {
+          liveBrokerBalance = {
+            availableCash: parseFloat(brokerBalance.availablecash || 0),
+            netMargin: parseFloat(brokerBalance.net || 0),
+            utilisedMargin: parseFloat(brokerBalance.utilisedmargin || 0),
+            blockedMargin: parseFloat(brokerBalance.blockedmargin || 0)
+          };
+        }
+      } catch (err) {
+        console.error('Error fetching live broker balance in controller:', err.message);
+      }
+
       res.json({
         status: this.trader.isRunning ? 'RUNNING' : 'STOPPED',
         dailySummary: summary,
@@ -48,7 +63,8 @@ class TraderController {
           initial: initialCapital,
           current: currentBalance,
           isPaper: this.config.paperTrading.enabled
-        }
+        },
+        liveBrokerBalance: liveBrokerBalance
       });
     } catch (error) {
       res.status(500).json({ error: error.message });

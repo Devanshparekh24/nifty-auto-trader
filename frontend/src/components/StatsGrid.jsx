@@ -42,24 +42,59 @@ function StatsGrid({ statusData, summary }) {
       
       {/* 1. Margin Balance Card */}
       <MetricCard 
-        title="Trading Balance" 
+        title={capital.isPaper ? "Paper Trading Balance" : "Live Trading Balance"} 
         icon="💰"
         hero={`₹${capital.current.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-        heroClass="text-violet-400 drop-shadow-[0_0_15px_rgba(167,139,250,0.15)]"
+        heroClass={capital.isPaper ? "text-violet-400 drop-shadow-[0_0_15px_rgba(167,139,250,0.15)]" : "text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.15)]"}
       >
-        <div className="flex flex-col gap-3 mt-2">
-          <div className="flex justify-between items-center border-b border-slate-800/40 pb-2">
-            <span className="text-sm text-slate-400">Starting Balance</span>
-            <span className="text-sm font-semibold font-mono text-slate-300">
+        <div className="flex flex-col gap-2 mt-2 text-xs">
+          <div className="flex justify-between items-center border-b border-slate-800/40 pb-1.5">
+            <span className="text-slate-400">Starting Balance</span>
+            <span className="font-semibold font-mono text-slate-300">
               ₹{capital.initial.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-sm text-slate-400">Trading Mode</span>
-            <span className="text-[10px] font-mono uppercase font-bold tracking-widest text-slate-400 bg-slate-900 border border-slate-800/80 px-2 py-0.5 rounded">
+            <span className="text-slate-400">Trading Mode</span>
+            <span className={`text-[9px] font-mono uppercase font-bold tracking-wider px-2 py-0.5 rounded ${
+              capital.isPaper 
+                ? 'text-violet-400 bg-violet-950/30 border border-violet-800/30' 
+                : 'text-emerald-400 bg-emerald-950/30 border border-emerald-800/30'
+            }`}>
               {capital.isPaper ? '📝 Paper Trade' : '⚡ Live Trade'}
             </span>
           </div>
+
+          {statusData?.liveBrokerBalance ? (
+            <div className="mt-3 bg-slate-950/80 border border-slate-800/80 rounded-xl p-3 flex flex-col gap-2">
+              <div className="text-[10px] font-bold text-slate-400 tracking-wider uppercase flex items-center justify-between">
+                <span>Angel One Balance</span>
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-400">Available Cash</span>
+                <span className="font-mono text-emerald-400 font-semibold">
+                  ₹{parseFloat(statusData.liveBrokerBalance.availableCash).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-400">Net Margin</span>
+                <span className="font-mono text-slate-200 font-medium">
+                  ₹{parseFloat(statusData.liveBrokerBalance.netMargin).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-400">Utilised Margin</span>
+                <span className="font-mono text-rose-400">
+                  ₹{parseFloat(statusData.liveBrokerBalance.utilisedMargin).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3 bg-slate-950/30 border border-slate-850/40 rounded-xl p-2.5 text-[10px] text-slate-500 text-center font-medium">
+              🔌 Angel One Broker Offline
+            </div>
+          )}
         </div>
       </MetricCard>
 
